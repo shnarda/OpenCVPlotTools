@@ -46,8 +46,8 @@ The following example is based on the "Examples/Histogram_example.cpp" file.
     cv::waitKey(0);
 }
 ```
-The output canvas can be seen below:
-(Examples/Histogram.png)
+The output canvas can be seen below:\
+![Histogram](Examples/Histogram.png)
 
 
 
