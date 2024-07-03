@@ -1,7 +1,6 @@
 #ifndef HISTOGRAM_H
 #define HISTOGRAM_H
 
-#include "paintertools.h"
 #include "plotelementbase.h"
 #include <optional>
 

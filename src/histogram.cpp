@@ -1,6 +1,5 @@
 #include "histogram.h"
 #include <numeric>
-#include "paintertools.h"
 #include "opencv2/imgproc.hpp"
 #include "PlotUtils.h"
 
