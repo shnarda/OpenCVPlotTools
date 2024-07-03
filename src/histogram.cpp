@@ -2,6 +2,7 @@
 #include <numeric>
 #include "paintertools.h"
 #include "opencv2/imgproc.hpp"
+#include "PlotUtils.h"
 
 //We will clearly use constants from this namespace
 using namespace PainterConstants;
@@ -9,8 +10,6 @@ using namespace PainterConstants;
 //Compile time constants
 constexpr uint16_t PADDING_TITLE_HISTOGRAM = 10;
 constexpr uint16_t PADDING_HISTOGRAM_XAXIS = 10;
-constexpr float_t DEFAULT_TITLE_SIZE = 0.8;
-constexpr float_t DEFAULT_XAXIS_SIZE = 0.4;
 
 
 static inline void fieldNotFoundError(const std::string& text)
@@ -24,11 +23,7 @@ static inline void improperFieldError(const std::string&operation, const std::st
 }
 
 
-Histogram::Histogram(const std::vector<size_t> &histogram, const std::vector<double> &bins) :
-    m_histogram(histogram),
-    m_bins(bins),
-    m_titleSize(DEFAULT_TITLE_SIZE),
-    m_xAxisSize(DEFAULT_XAXIS_SIZE)
+Histogram::Histogram(const std::vector<size_t> &histogram, const std::vector<double> &bins) : m_histogram(histogram), m_bins(bins)
 {
     if(!m_histogram.size())
         throw(std::runtime_error("Length of the histogram cannot be zero"));
@@ -37,11 +32,7 @@ Histogram::Histogram(const std::vector<size_t> &histogram, const std::vector<dou
         throw(std::runtime_error("Length mismatch between histogram vector and bin vector"));
 }
 
-Histogram::Histogram(std::vector<size_t> &&histogram, std::vector<double> &&bins) :
-    m_histogram(std::move(histogram)),
-    m_bins(std::move(bins)),
-    m_titleSize(DEFAULT_TITLE_SIZE),
-    m_xAxisSize(DEFAULT_XAXIS_SIZE)
+Histogram::Histogram(std::vector<size_t> &&histogram, std::vector<double> &&bins) : m_histogram(std::move(histogram)), m_bins(std::move(bins))
 {
     if(!m_histogram.size())
         throw(std::runtime_error("Length of the histogram cannot be zero"));
@@ -50,11 +41,7 @@ Histogram::Histogram(std::vector<size_t> &&histogram, std::vector<double> &&bins
         throw(std::runtime_error("Length mismatch between histogram vector and bin vector"));
 }
 
-Histogram::Histogram(const std::vector<size_t> &histogram) :
-    m_histogram(histogram),
-    m_bins(histogram.size()),
-    m_titleSize(DEFAULT_TITLE_SIZE),
-    m_xAxisSize(DEFAULT_XAXIS_SIZE)
+Histogram::Histogram(const std::vector<size_t> &histogram) : m_histogram(histogram), m_bins(histogram.size())
 {
     if(!m_histogram.size())
         throw(std::runtime_error("Length of the histogram cannot be zero"));
@@ -62,11 +49,7 @@ Histogram::Histogram(const std::vector<size_t> &histogram) :
     std::iota(m_bins.begin(), m_bins.end(), 1);
 }
 
-Histogram::Histogram(std::vector<size_t> &&histogram) :
-    m_histogram(std::move(histogram)),
-    m_bins(m_histogram.size()),
-    m_titleSize(DEFAULT_TITLE_SIZE),
-    m_xAxisSize(DEFAULT_XAXIS_SIZE)
+Histogram::Histogram(std::vector<size_t> &&histogram) : m_histogram(std::move(histogram)), m_bins(m_histogram.size())
 {
     if(!m_histogram.size())
         throw(std::runtime_error("Length of the histogram cannot be zero"));
@@ -74,10 +57,7 @@ Histogram::Histogram(std::vector<size_t> &&histogram) :
     std::iota(m_bins.begin(), m_bins.end(), 1);
 }
 
-Histogram::Histogram(const std::vector<size_t> &histogram, const double binStart, const std::optional<double> binEnd) :
-    m_histogram(histogram),
-    m_titleSize(DEFAULT_TITLE_SIZE),
-    m_xAxisSize(DEFAULT_XAXIS_SIZE)
+Histogram::Histogram(const std::vector<size_t> &histogram, const double binStart, const std::optional<double> binEnd) : m_histogram(histogram)
 {
     if(!m_histogram.size())
         throw(std::runtime_error("Length of the histogram cannot be zero"));
@@ -86,10 +66,7 @@ Histogram::Histogram(const std::vector<size_t> &histogram, const double binStart
     m_bins = PlotUtils::linspace(binStart, binEnd_, histogram.size());
 }
 
-Histogram::Histogram(std::vector<size_t> &&histogram, const double binStart, const std::optional<double> binEnd) :
-    m_histogram(std::move(histogram)),
-    m_titleSize(DEFAULT_TITLE_SIZE),
-    m_xAxisSize(DEFAULT_XAXIS_SIZE)
+Histogram::Histogram(std::vector<size_t> &&histogram, const double binStart, const std::optional<double> binEnd) : m_histogram(std::move(histogram))
 {
     if(!m_histogram.size())
         throw(std::runtime_error("Length of the histogram cannot be zero"));
@@ -98,9 +75,7 @@ Histogram::Histogram(std::vector<size_t> &&histogram, const double binStart, con
     m_bins = PlotUtils::linspace(binStart, binEnd_, m_histogram.size());
 }
 
-Histogram::Histogram(const cv::Mat &inArray, const std::optional<int> t_binSize, const std::optional<double> t_binStart, const std::optional<double> t_binEnd) :
-    m_titleSize(DEFAULT_TITLE_SIZE),
-    m_xAxisSize(DEFAULT_XAXIS_SIZE)
+Histogram::Histogram(const cv::Mat &inArray, const std::optional<int> t_binSize, const std::optional<double> t_binStart, const std::optional<double> t_binEnd)
 {
     if(t_binSize)
         if(*t_binSize == 0)
@@ -134,42 +109,6 @@ Histogram::Histogram(const cv::Mat &inArray, const std::optional<int> t_binSize,
     m_bins = PlotUtils::linspace(binStart, binEnd, binSize);
 }
 
-void Histogram::setText(const TextField component, const std::string& text, const float textSize, const cv::Scalar color)
-{
-    switch (component) {
-    case TextField::Title:
-        m_title = text;
-        m_titleColor = color;
-        m_titleSize = textSize * DEFAULT_TITLE_SIZE;
-        break;
-    case TextField::XAxis:
-        m_xAxisText = text;
-        m_xAxisColor = color;
-        m_xAxisSize = textSize * DEFAULT_XAXIS_SIZE;
-        break;
-    case TextField::YAxis:     fieldNotFoundError("Y-Axis Text");           break;
-    case TextField::Legend:    fieldNotFoundError("Legend");                break;
-    default:                                                                break;
-    }
-}
-
-void Histogram::setText(const TextField component, std::string &&text, const float textSize, const cv::Scalar color)
-{
-    switch (component) {
-    case TextField::Title:
-        m_title = std::move(text);
-        m_titleColor = color;
-        break;
-    case TextField::XAxis:
-        m_xAxisText = std::move(text);
-        m_xAxisColor = color;
-        break;
-    case TextField::YAxis:     fieldNotFoundError("Y-Axis Text");           break;
-    case TextField::Legend:    improperFieldError("setText", "Legend");     break;
-    default:                                                                break;
-    }
-}
-
 cv::Mat Histogram::generate()
 {
     constexpr uint16_t verticalSidePadding = 10;
@@ -193,19 +132,19 @@ cv::Mat Histogram::generate()
     canvasRowCounter += CANVAS_HEIGHT_PADDING;
 
     //Generate the title. Then reshape and place it on the canvas
-    cv::Mat titleCanvas = PainterTools::generateText(m_titleSize, m_title, m_titleColor);
-    PainterTools::centerElement(titleCanvas, cv::Size{canvasSize.width, 0}, PainterTools::AlignmentType::WidthOnly);
+    cv::Mat titleCanvas = generateText(m_titleSize, m_title, m_titleColor);
+    centerElement(titleCanvas, cv::Size{canvasSize.width, 0}, AlignmentType::WidthOnly);
     titleCanvas.copyTo(m_canvas(cv::Rect(0, canvasRowCounter, titleCanvas.cols, titleCanvas.rows)));
 
     canvasRowCounter += titleCanvas.rows + PADDING_TITLE_HISTOGRAM;
 
     //Generate the x-Axis Text but don't place it on the canvas yet.
-    cv::Mat xAxisCanvas = PainterTools::generateText(m_xAxisSize, m_xAxisText, m_xAxisColor);
-    PainterTools::centerElement(xAxisCanvas, cv::Size{canvasSize.width, 0}, PainterTools::AlignmentType::WidthOnly);
+    cv::Mat xAxisCanvas = generateText(m_xAxisSize, m_xAxisText, m_xAxisColor);
+    centerElement(xAxisCanvas, cv::Size{canvasSize.width, 0}, AlignmentType::WidthOnly);
 
     //Generate the histogram and place it on canvas
     cv::Mat histogramCanvas = generateHistogramCanvas(titleCanvas.rows, xAxisCanvas.rows);
-    PainterTools::centerElement(histogramCanvas, cv::Size{canvasSize.width, 0}, PainterTools::AlignmentType::WidthOnly);
+    centerElement(histogramCanvas, cv::Size{canvasSize.width, 0}, AlignmentType::WidthOnly);
     histogramCanvas.copyTo(m_canvas(cv::Rect(0, canvasRowCounter, histogramCanvas.cols, histogramCanvas.rows)));
 
     canvasRowCounter += histogramCanvas.rows + PADDING_HISTOGRAM_XAXIS;
@@ -221,9 +160,9 @@ cv::Size_<uint16_t> Histogram::calculateMinimumCanvasSize()
 {
     constexpr uint16_t MINIMUM_HISTOGRAM_HEIGHT = 200;
 
-    const cv::Size_<uint16_t> titleSize = PainterTools::allocateTextSpace(m_titleSize, m_title);
+    const cv::Size_<uint16_t> titleSize = allocateTextSpace(m_titleSize, m_title);
     const cv::Size_<uint16_t> minimumHistogramSize{static_cast<uint16_t>(m_bins.size()), MINIMUM_HISTOGRAM_HEIGHT};
-    const cv::Size_<uint16_t> xAxisTextSize = PainterTools::allocateTextSpace(m_xAxisSize, m_xAxisText);
+    const cv::Size_<uint16_t> xAxisTextSize = allocateTextSpace(m_xAxisSize, m_xAxisText);
 
     //Combine minimum sizes
     const int totalHeight = titleSize.height + minimumHistogramSize.height + xAxisTextSize.height + (2 * CANVAS_HEIGHT_PADDING) + PADDING_HISTOGRAM_XAXIS + PADDING_TITLE_HISTOGRAM;
@@ -272,9 +211,8 @@ cv::Mat Histogram::generateHistogramCanvas(const int titleCanvasHeight, const in
     std::for_each(histogram_normalized.cbegin(), histogram_normalized.cend(), lambda_drawBins);
 
     //Prepare the axis numbers
-    const uint8_t precision_x = (static_cast<int>(*m_bins.cbegin()) == *m_bins.cbegin())? 0 : 2;
     const size_t yAxisStartPixel = histogramHeight - histogramHeight_padded;
-    PainterTools::addAxis(histogramCanvas, binsStartPixel, yAxisStartPixel, {*m_bins.cbegin(), *(m_bins.cend() - 1)}, {0, maxCount}, precision_x, 0);
+    addAxis(histogramCanvas, binsStartPixel, yAxisStartPixel, {*m_bins.cbegin(), *(m_bins.cend() - 1)}, {0, maxCount});
 
     return histogramCanvas;
 }

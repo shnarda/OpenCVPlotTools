@@ -6,7 +6,7 @@
 #include <optional>
 
 
-class Histogram : public PlotElementBase<Histogram>
+class Histogram : public PlotElementBase
 {
 public:
     /**
@@ -47,15 +47,7 @@ public:
     const std::vector<size_t>& getHistogram() const {return m_histogram;};
     const std::vector<double>& getBins() const {return m_bins;};
 
-    /**
-    * @brief Sets the text field that has been provided from the parameter "component"
-    * @param component: Specifies the target location of the text to be set.
-    * @param text: the text to be set
-    * @param textSize: Determines the size of the text which always have default value of 1. Setting it 2 doubles the default text size.
-    * @param color: The color of the text, which is represented by the BGR value.
-    */
-    void setText(const TextField component, const std::string& text, const float textSize=1, const cv::Scalar color=PainterConstants::black);
-    void setText(const TextField component, std::string&& text, const float textSize=1, const cv::Scalar color=PainterConstants::black);
+
 
     /**
     * @brief Generates the histogram canvas by using the parameters that have been given.
@@ -66,12 +58,6 @@ public:
 private:
     std::vector<size_t> m_histogram;
     std::vector<double> m_bins;
-
-    float m_titleSize;
-    float m_xAxisSize;
-
-    cv::Scalar m_titleColor = PainterConstants::black;
-    cv::Scalar m_xAxisColor = PainterConstants::black;
 
     cv::Size_<uint16_t> calculateMinimumCanvasSize();
 
