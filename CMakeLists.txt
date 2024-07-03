@@ -5,21 +5,30 @@ project(OpenCVPlotTools LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# OPENCV package directives
+# OpenCV package directives
 find_package(OpenCV REQUIRED)
 
+################## Library #######################
 
-add_executable(Example Examples/Histogram_example.cpp
-    inc/plotelementbase.h
-    inc/histogram.h
+add_library(OpenCVPlotTools STATIC
     src/histogram.cpp
-    inc/paintertools.h
-    src/paintertools.cpp
-    )
+    src/plotelementbase.cpp
+)
+
+target_include_directories(OpenCVPlotTools PRIVATE ${OpenCV_INCLUDE_DIRS} inc)
+target_link_libraries(OpenCVPlotTools PRIVATE ${OpenCV_LIBS})
+
+################# Examples #####################
+
+add_executable(Example Examples/Histogram_example.cpp)
 target_include_directories(Example PRIVATE ${OpenCV_INCLUDE_DIRS} inc)
-target_link_libraries(Example PRIVATE ${OpenCV_LIBS})
+target_link_libraries(Example PRIVATE
+    ${OpenCV_LIBS}
+    OpenCVPlotTools
+)
 
 
+################ Tests #########################
 
 # GTest package directives
 include(FetchContent)
@@ -33,15 +42,6 @@ if(NOT googletest_POPULATED)
   add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BUILD_DIR})
 endif()
 
-
-
-add_library(OpenCVPlotToolsLib STATIC
-    src/histogram.cpp
-    src/paintertools.cpp
-)
-target_include_directories(OpenCVPlotToolsLib PRIVATE ${OpenCV_INCLUDE_DIRS} inc)
-target_link_libraries(OpenCVPlotToolsLib PRIVATE ${OpenCV_LIBS})
-
 # Test files
 add_executable(testRunner
     Tests/TestHistogram.cpp
@@ -51,7 +51,7 @@ target_include_directories(testRunner PRIVATE
     inc
 )
 target_link_libraries(testRunner
-    OpenCVPlotToolsLib
+    OpenCVPlotTools
     ${OpenCV_LIBS}
     gtest_main
     gmock_main)
