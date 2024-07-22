@@ -3,7 +3,7 @@
 
 int main()
 {
-    //Prepare the normal distributed histogram data and pass it on a Histogram object
+    //Prepare the grayscale gradient data and pass it on a Colormap object
     cv::Mat target(100, 150, CV_8U);
     for(int c = 0; c < target.cols; c++){
         target.col(c).setTo(c);
