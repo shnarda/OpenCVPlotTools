@@ -66,4 +66,23 @@ static std::vector<double> linspace(const float start, const float end, const st
     *(out.end() - 1) = end;
     return out;
 };
+
+template<size_t S>
+static constexpr std::array<double, S> linspace(const float start, const float end)
+{
+    //Check for the illegal condition
+    static_assert(S != 0, "Range cannot be zero");
+
+    constexpr float inc = (end - start) / std::max(S - 1, static_cast<size_t>(1));
+    float curValue = start - inc;
+    constexpr auto incFloat = [&curValue, inc]() {return curValue += inc;};
+
+    std::array<double, S> out{};
+    out[0] = 0;
+    std::generate(out.begin(), out.end() - 1, incFloat);
+    *(out.end() - 1) = end;
+    return out;
+};
+
+
 }

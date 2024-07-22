@@ -55,12 +55,16 @@ public:
     cv::Mat generate();
 
 private:
+    cv::Size calculateMinimumCanvasSize(const cv::Size& titleCanvasSize, const cv::Size& xAxisCanvasSize);
+
+    cv::Mat generateHistogramCanvas(const int titleCanvasHeight, const int xAxisCanvasHeight);
+
+    int totalHeightPadding() const;
+
+private:
     std::vector<size_t> m_histogram;
     std::vector<double> m_bins;
 
-    cv::Size_<uint16_t> calculateMinimumCanvasSize();
-
-    cv::Mat generateHistogramCanvas(const int titleCanvasHeight, const int xAxisCanvasHeight);
 };
 
 #endif // HISTOGRAM_H

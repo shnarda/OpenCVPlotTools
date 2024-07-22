@@ -13,20 +13,11 @@ find_package(OpenCV REQUIRED)
 add_library(OpenCVPlotTools STATIC
     src/histogram.cpp
     src/plotelementbase.cpp
+    src/colormap.cpp
 )
 
 target_include_directories(OpenCVPlotTools PRIVATE ${OpenCV_INCLUDE_DIRS} inc)
 target_link_libraries(OpenCVPlotTools PRIVATE ${OpenCV_LIBS})
-
-################# Examples #####################
-
-add_executable(Example Examples/Histogram_example.cpp)
-target_include_directories(Example PRIVATE ${OpenCV_INCLUDE_DIRS} inc)
-target_link_libraries(Example PRIVATE
-    ${OpenCV_LIBS}
-    OpenCVPlotTools
-)
-
 
 ################ Tests #########################
 
@@ -45,6 +36,8 @@ endif()
 # Test files
 add_executable(testRunner
     Tests/TestHistogram.cpp
+    Tests/TestMain.cpp
+    Tests/TestColormap.cpp
 )
 target_include_directories(testRunner PRIVATE
     ${OpenCV_INCLUDE_DIRS}
