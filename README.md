@@ -10,7 +10,7 @@ A C++ plotting library that generates basic plotting tools with the help of Open
 This library is currently incomplete and exists on this platform for being a code sample.\
 Here is the current state 0f the library:
 - Histogram element ☑️
-- Colormap element (work in progress)
+- Colormap element ☑️
 - Plot element (work in progress)
 - Subplots (work in progress)
 - Table element (work in progress)
