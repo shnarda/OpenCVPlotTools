@@ -13,8 +13,20 @@ constexpr uint32_t LETTER_WIDTH_START = 20;
 //addAxis constant expressions
 constexpr size_t MINIMUM_PIXELS_BETWEEN_AXES = 15;
 constexpr size_t NUMBER_OF_AXES = 6;
-constexpr size_t LENGTH_AXIS_LINE = 5;
 constexpr int OFFSET_TEXT_LINE = 10;
+
+static cv::Size allocateTextSpace(const float_t fontSize, const std::string_view text)
+{
+    const int paddingSize = 10 * fontSize;
+    const auto countSpaces = std::count(text.begin(), text.end(), ' ');
+    const uint32_t countLetters = text.length() - countSpaces;
+
+    //These pixel sizes will give a rough estimation for the text canvas shape. The final canvas length will be decided from the resulting canvas
+    const uint32_t canvasLength = (SPACE_CHAR_WIDTH_START * countSpaces) + (LETTER_WIDTH_START * countLetters) * fontSize + (2* paddingSize);
+    const uint32_t canvasHeight = TEXT_CANVAS_HEIGHT_NORM * fontSize;
+
+    return cv::Size(canvasLength, canvasHeight);
+}
 
 std::string PlotElementBase::getText(const TextField field) const
 {
@@ -76,20 +88,7 @@ void PlotElementBase::setPrecision(const AxisType axisType, const uint8_t precis
     }
 }
 
-cv::Size PlotElementBase::allocateTextSpace(const float_t fontSize, const std::string_view text)
-{
-    const int paddingSize = 10 * fontSize;
-    const auto countSpaces = std::count(text.begin(), text.end(), ' ');
-    const uint32_t countLetters = text.length() - countSpaces;
-
-    //These pixel sizes will give a rough estimation for the text canvas shape. The final canvas length will be decided from the resulting canvas
-    const uint32_t canvasLength = (SPACE_CHAR_WIDTH_START * countSpaces) + (LETTER_WIDTH_START * countLetters) * fontSize + (2* paddingSize);
-    const uint32_t canvasHeight = TEXT_CANVAS_HEIGHT_NORM * fontSize;
-
-    return cv::Size(canvasLength, canvasHeight);
-}
-
-void PlotElementBase::centerElement(cv::Mat &target, const cv::Size &centerArea, const AlignmentType alignmentType)
+void PlotElementBase::centerElement(cv::Mat &target, const cv::Size_<size_t> &centerArea, const AlignmentType alignmentType)
 {
     //Check for the illegal conditions
     if(target.empty())
@@ -114,7 +113,7 @@ void PlotElementBase::centerElement(cv::Mat &target, const cv::Size &centerArea,
     target = centered;
 }
 
-cv::Mat PlotElementBase::centerElement(const cv::Mat &target, const cv::Size &centerArea, const AlignmentType alignmentType)
+cv::Mat PlotElementBase::centerElement(const cv::Mat &target, const cv::Size_<size_t> &centerArea, const AlignmentType alignmentType)
 {
     //Check for the illegal conditions
     if(target.empty())
@@ -139,44 +138,51 @@ cv::Mat PlotElementBase::centerElement(const cv::Mat &target, const cv::Size &ce
     return centered;
 }
 
-void PlotElementBase::addAxis(cv::Mat &plotElement, const uint32_t startPixel_x, const uint32_t startPixel_y, const AxisRange range_x, const AxisRange range_y)
+void PlotElementBase::addAxis(cv::Mat &plotElement, const uint32_t startPixel_x, const uint32_t startPixel_y, const AxisRange range_x, const AxisRange range_y) const
 {
     //Constants that will repeteadly be used
-    const int BOTTOM_XAXIS = plotElement.rows - 1;
-    const int LINE_END_XAXIS = BOTTOM_XAXIS - LENGTH_AXIS_LINE;
+    const int BOTTOM_XAXIS = plotElement.rows - xAxisTextHeight() - 1;
+    const int LINE_END_XAXIS = BOTTOM_XAXIS + LENGTH_AXIS_LINE;
 
     //Start with determining the numbers to be placed on the element
     const size_t numberofAxes_x = std::min(static_cast<size_t>((plotElement.cols - startPixel_x) / MINIMUM_PIXELS_BETWEEN_AXES), NUMBER_OF_AXES);
     const std::vector<double> xAxisNumbers(PlotUtils::linspace(range_x.first, range_x.second, numberofAxes_x));
 
     //Place each number for the x-axis
-    int xAxisPosCounter = startPixel_x;
+    const int xAxisStart = startPixel_x + m_yAxisTextSize.width + OFFSET_TEXT_LINE;
+    int xAxisPosCounter = xAxisStart;
     for(const double currentNumber: xAxisNumbers){
         cv::line(plotElement, {xAxisPosCounter, BOTTOM_XAXIS}, {xAxisPosCounter, LINE_END_XAXIS}, cv::LINE_AA);
 
-        //Prepare the text to be placed
-        std::stringstream stream;
-        stream << std::fixed << std::setprecision(m_precision_x) << std::scientific << currentNumber;
-        std::string stringNumber = stream.str();
-        cv::putText(plotElement, stringNumber,{xAxisPosCounter - OFFSET_TEXT_LINE, LINE_END_XAXIS - 2}, 1, 0.5, PainterConstants::blue, 1, cv::LINE_AA);
-        xAxisPosCounter += (plotElement.cols - startPixel_x) / numberofAxes_x;
+        //Center the x-Axis text (except when it can't)
+        const int posX_xAxisText = std::min(std::max(0, xAxisPosCounter - (m_xAxisTextSize.width / 2)), plotElement.cols - m_xAxisTextSize.width);
+
+        //Generate the current axis number and place it on the canvas
+        const cv::Mat xAxisText = generateNumericText(DEFAULT_AXIS_NUMBER_SIZE, currentNumber, m_precision_x);
+        xAxisText.copyTo(plotElement(cv::Rect(posX_xAxisText, LINE_END_XAXIS, xAxisText.cols, xAxisText.rows)));
+
+        //Update the x-axis position counter
+        xAxisPosCounter += (plotElement.cols - xAxisStart) / static_cast<float>(numberofAxes_x - 1);
     }
 
     //Apply similar precedure for y-axis. y-axis numbers should be reverse ordered
     const size_t numberofAxes_y = std::min(static_cast<size_t>((plotElement.rows - startPixel_y) / MINIMUM_PIXELS_BETWEEN_AXES), NUMBER_OF_AXES);
     const std::vector<double> yAxisNumbers(PlotUtils::linspace(range_y.second, range_y.first, numberofAxes_y));
 
-
     //Place each number for the y-axis.
     int yAxisPosCounter = startPixel_y;
     for(const double currentNumber: yAxisNumbers){
-        cv::line(plotElement, {0, yAxisPosCounter}, {LENGTH_AXIS_LINE, yAxisPosCounter}, cv::LINE_AA);
+        cv::line(plotElement, {m_yAxisTextSize.width - 1, yAxisPosCounter}, {m_yAxisTextSize.width - LENGTH_AXIS_LINE - 1, yAxisPosCounter}, cv::LINE_AA);
 
-        //Prepare the text to be placed
-        std::stringstream stream;
-        stream << std::fixed << std::setprecision(m_precision_y) << std::scientific << currentNumber;
-        std::string stringNumber = stream.str();
-        cv::putText(plotElement, stringNumber,{LENGTH_AXIS_LINE + 2, yAxisPosCounter}, 1, 0.5, PainterConstants::blue, 1, cv::LINE_AA);
+        //Center the y-axis text (except when it can't)
+        int yStart = std::max(yAxisPosCounter - (m_yAxisTextSize.height / 2), 0);
+        yStart = std::min(yStart, BOTTOM_XAXIS - m_yAxisTextSize.height);
+
+        //Generate the current axis number and place it on the canvas
+        const cv::Mat yAxisText = generateNumericText(DEFAULT_AXIS_NUMBER_SIZE, currentNumber, m_precision_y);
+        yAxisText.copyTo(plotElement(cv::Rect(0, yStart, yAxisText.cols, yAxisText.rows)));
+
+        //Update the position counter
         yAxisPosCounter += (plotElement.rows - startPixel_y) / (numberofAxes_y - 1);
     }
 }
@@ -204,4 +210,18 @@ cv::Mat PlotElementBase::generateText(const float_t fontSize, const std::string_
     }
 
     return canvas.colRange(0,  std::min(firstInstance + marginSize, static_cast<uint32_t>(canvas.cols)));
+}
+
+cv::Mat PlotElementBase::generateNumericText(const float_t fontSize, const double_t number, const uint8_t precision)
+{
+    std::stringstream stream;
+    stream << std::fixed << std::setprecision(precision) << std::scientific << number;
+    return generateText(fontSize, stream.str(), blue);
+}
+
+cv::Size PlotElementBase::allocateNumericTextSpace(const float_t fontSize, const double_t number, const uint8_t precision)
+{
+    std::stringstream stream;
+    stream << std::fixed << std::setprecision(precision) << std::scientific << number;
+    return generateText(fontSize, stream.str(), blue).size();
 }

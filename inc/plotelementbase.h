@@ -17,14 +17,10 @@ inline const cv::Scalar red{0, 0, 255};
 inline constexpr auto font = cv::HersheyFonts::FONT_HERSHEY_COMPLEX;
 }
 
-
 using AxisRange = std::pair<double, double>;
 
 enum class TextField{Title, XAxis, YAxis};
 enum class AxisType{XAxis, YAxis};
-
-
-
 
 class PlotElementBase
 {
@@ -72,25 +68,32 @@ protected:
 
     [[nodiscard]] static cv::Mat generateText(const float_t fontSize, const std::string_view text, const cv::Scalar textColor=PainterConstants::black);
 
-    [[nodiscard]] static cv::Size allocateTextSpace(const float_t fontSize, const std::string_view text);
+    [[nodiscard]] static cv::Mat generateNumericText(const float_t fontSize, const double_t number, const uint8_t precision);
 
+    [[nodiscard]] static cv::Size allocateNumericTextSpace(const float_t fontSize, const double_t number, const uint8_t precision);
 
     enum class AlignmentType{WidthOnly, HeightOnly, WholeShape};
-    static void centerElement(cv::Mat& centerTarget, const cv::Size& centerArea, const AlignmentType alignmentType);
-    [[nodiscard]] static cv::Mat centerElement(const cv::Mat& centerTarget, const cv::Size& centerArea, const AlignmentType alignmentType);
+    static void centerElement(cv::Mat& centerTarget, const cv::Size_<size_t>& centerArea, const AlignmentType alignmentType);
+    [[nodiscard]] static cv::Mat centerElement(const cv::Mat& centerTarget, const cv::Size_<size_t>& centerArea, const AlignmentType alignmentType);
 
-    void addAxis(cv::Mat& plotElement, const uint32_t startPixel_x, const uint32_t startPixel_y, const AxisRange range_x, const AxisRange range_y);
+    void addAxis(cv::Mat& plotElement, const uint32_t startPixel_x, const uint32_t startPixel_y, const AxisRange range_x, const AxisRange range_y) const;
+
+    //protected getters
+    int yAxisTextWidth() const {return m_yAxisTextSize.width + LENGTH_AXIS_LINE;};
+    int xAxisTextHeight() const {return m_xAxisTextSize.height + LENGTH_AXIS_LINE;};
 
 protected:
     //Compile time constants
-    static constexpr uint32_t CANVAS_WIDTH_PADDING = 10;
-    static constexpr uint32_t CANVAS_HEIGHT_PADDING = 10;
+    static constexpr int CANVAS_WIDTH_PADDING = 10;
+    static constexpr int CANVAS_HEIGHT_PADDING = 10;
     static constexpr float_t DEFAULT_TITLE_SIZE = 0.8;
     static constexpr float_t DEFAULT_XAXIS_SIZE = 0.4;
     static constexpr float_t DEFAULT_YAXIS_SIZE = 0.4;
+    static constexpr float_t DEFAULT_AXIS_NUMBER_SIZE = 0.3;
+    static constexpr int LENGTH_AXIS_LINE = 5;
 
     //Common plot element members
-    cv::Size_<uint16_t> canvasSize{640, 512};
+    cv::Size canvasSize{640, 512};
     cv::Mat m_canvas{};
     std::string m_title{};
     std::string m_xAxisText{};
@@ -103,6 +106,8 @@ protected:
     float m_titleSize = DEFAULT_TITLE_SIZE;
     float m_xAxisSize = DEFAULT_XAXIS_SIZE;
     float m_yAxisSize = DEFAULT_YAXIS_SIZE;
+    cv::Size m_xAxisTextSize{};
+    cv::Size m_yAxisTextSize{};
 
 
 };
