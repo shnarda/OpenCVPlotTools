@@ -7,8 +7,9 @@
 using namespace PainterConstants;
 
 //Compile time constants
-constexpr uint16_t PADDING_TITLE_HISTOGRAM = 10;
-constexpr uint16_t PADDING_HISTOGRAM_XAXIS = 10;
+constexpr int PADDING_TITLE_HISTOGRAM = 10;
+constexpr int PADDING_HISTOGRAM_XAXIS = 10;
+constexpr int MINIMUM_HISTOGRAM_HEIGHT = 200;
 
 
 static inline void fieldNotFoundError(const std::string& text)
@@ -110,14 +111,15 @@ Histogram::Histogram(const cv::Mat &inArray, const std::optional<int> t_binSize,
 
 cv::Mat Histogram::generate()
 {
-    constexpr uint16_t verticalSidePadding = 10;
-    constexpr uint16_t horizontalSidePadding = 10;
-
     if(!m_histogram.size() || !m_bins.size())
         throw(std::runtime_error("Length of the histogram or bins vector cannot be zero"));
 
+    //Generate the title and x-axis text beforehand.
+    cv::Mat titleCanvas = generateText(m_titleSize, m_title, m_titleColor);
+    cv::Mat xAxisCanvas = generateText(m_xAxisSize, m_xAxisText, m_xAxisColor);
+
     //There is a lower limit on the sizes that a canvas can have
-    const auto minimumCanvasSize = calculateMinimumCanvasSize();
+    const auto minimumCanvasSize = calculateMinimumCanvasSize(titleCanvas.size(), xAxisCanvas.size());
     canvasSize.height = std::max(canvasSize.height, minimumCanvasSize.height);
     canvasSize.width = std::max(canvasSize.width, minimumCanvasSize.width);
 
@@ -130,16 +132,11 @@ cv::Mat Histogram::generate()
     //Add top padding to the row counter
     canvasRowCounter += CANVAS_HEIGHT_PADDING;
 
-    //Generate the title. Then reshape and place it on the canvas
-    cv::Mat titleCanvas = generateText(m_titleSize, m_title, m_titleColor);
+    //Reshape the previously generated title and place it on the canvas
     centerElement(titleCanvas, cv::Size{canvasSize.width, 0}, AlignmentType::WidthOnly);
     titleCanvas.copyTo(m_canvas(cv::Rect(0, canvasRowCounter, titleCanvas.cols, titleCanvas.rows)));
 
     canvasRowCounter += titleCanvas.rows + PADDING_TITLE_HISTOGRAM;
-
-    //Generate the x-Axis Text but don't place it on the canvas yet.
-    cv::Mat xAxisCanvas = generateText(m_xAxisSize, m_xAxisText, m_xAxisColor);
-    centerElement(xAxisCanvas, cv::Size{canvasSize.width, 0}, AlignmentType::WidthOnly);
 
     //Generate the histogram and place it on canvas
     cv::Mat histogramCanvas = generateHistogramCanvas(titleCanvas.rows, xAxisCanvas.rows);
@@ -149,23 +146,26 @@ cv::Mat Histogram::generate()
     canvasRowCounter += histogramCanvas.rows + PADDING_HISTOGRAM_XAXIS;
 
     //Place the x-axis text that previously generated
+    centerElement(xAxisCanvas, cv::Size{canvasSize.width, 0}, AlignmentType::WidthOnly);
     xAxisCanvas.copyTo(m_canvas(cv::Rect(0, canvasRowCounter, xAxisCanvas.cols, xAxisCanvas.rows)));
 
     //Generate the histogram graph element.
     return m_canvas;
 }
 
-cv::Size_<uint16_t> Histogram::calculateMinimumCanvasSize()
+cv::Size Histogram::calculateMinimumCanvasSize(const cv::Size& titleCanvasSize, const cv::Size& xAxisCanvasSize)
 {
-    constexpr uint16_t MINIMUM_HISTOGRAM_HEIGHT = 200;
+    //Determine the space required for axis number texts
+    m_xAxisTextSize = allocateNumericTextSpace(DEFAULT_AXIS_NUMBER_SIZE, 1.25, m_precision_x);
+    m_yAxisTextSize = allocateNumericTextSpace(DEFAULT_AXIS_NUMBER_SIZE, 1.25, m_precision_y);
 
-    const cv::Size_<uint16_t> titleSize = allocateTextSpace(m_titleSize, m_title);
-    const cv::Size_<uint16_t> minimumHistogramSize{static_cast<uint16_t>(m_bins.size()), MINIMUM_HISTOGRAM_HEIGHT};
-    const cv::Size_<uint16_t> xAxisTextSize = allocateTextSpace(m_xAxisSize, m_xAxisText);
+    const cv::Size minimumHistogramSize{static_cast<int>(m_bins.size()), MINIMUM_HISTOGRAM_HEIGHT};
+    const int histogramWidthWithyAxis = minimumHistogramSize.width + m_yAxisTextSize.width;
 
     //Combine minimum sizes
-    const int totalHeight = titleSize.height + minimumHistogramSize.height + xAxisTextSize.height + (2 * CANVAS_HEIGHT_PADDING) + PADDING_HISTOGRAM_XAXIS + PADDING_TITLE_HISTOGRAM;
-    const int totalWidth = std::max({titleSize.width, minimumHistogramSize.width, xAxisTextSize.width}) + (2 * CANVAS_WIDTH_PADDING);
+    const int totalHeight = (2 * CANVAS_HEIGHT_PADDING) + titleCanvasSize.height + PADDING_TITLE_HISTOGRAM + minimumHistogramSize.height +
+                            m_xAxisTextSize.height + PADDING_HISTOGRAM_XAXIS + xAxisCanvasSize.height;
+    const int totalWidth = std::max({titleCanvasSize.width, histogramWidthWithyAxis, xAxisCanvasSize.width}) + (2 * CANVAS_WIDTH_PADDING);
 
     return cv::Size{totalWidth, totalHeight};
 }
@@ -174,9 +174,10 @@ cv::Mat Histogram::generateHistogramCanvas(const int titleCanvasHeight, const in
 {
     //Create a histogram canvas with proper paddings
     const auto& [canvasWidth, canvasHeight] = m_canvas.size();
-    const uint32_t histogramWidth = canvasWidth - (2 * CANVAS_WIDTH_PADDING);
-    const uint32_t histogramHeight = canvasHeight - (2  * CANVAS_HEIGHT_PADDING) - titleCanvasHeight - PADDING_TITLE_HISTOGRAM - PADDING_HISTOGRAM_XAXIS - xAxisCanvasHeight;
-    cv::Mat histogramCanvas(histogramHeight, histogramWidth, CV_8UC3, white);
+    const uint32_t histogramWidth = canvasWidth - (2 * CANVAS_WIDTH_PADDING) - yAxisTextWidth();
+    const uint32_t histogramHeight = canvasHeight - totalHeightPadding() - titleCanvasHeight - xAxisTextHeight() - xAxisCanvasHeight;
+    cv::Mat out(histogramHeight + xAxisTextHeight(), histogramWidth + yAxisTextWidth(), CV_8UC3, white);
+    cv::Mat histogramCanvas = out(cv::Rect(m_yAxisTextSize.width + LENGTH_AXIS_LINE, 0, histogramWidth, histogramHeight));
 
     //Draw a rectangle around histogram to indicate the area
     cv::rectangle(histogramCanvas, cv::Rect(0, 0, histogramCanvas.cols, histogramCanvas.rows), black, 1, cv::LINE_AA);
@@ -193,27 +194,28 @@ cv::Mat Histogram::generateHistogramCanvas(const int titleCanvasHeight, const in
 
     //This counter keeps track of the current x-Axis position of the histogram.
     //Start point is the half of the remainder of the previous division to center the histogram
-    const size_t binsStartPixel = (histogramWidth - (binPixelWidth * m_bins.size())) / 2;
+    const uint32_t binsStartPixel = (histogramWidth - (binPixelWidth * m_bins.size())) / 2;
     size_t binPixelCounter = binsStartPixel;
 
-    //This lambda draws each bin of the histogram with the argument of current histogram count
-    const auto lambda_drawBins = [&histogramCanvas, &binPixelCounter, histogramHeight, binPixelWidth](const size_t currentHistogram){
+    for(const size_t currentHistogram: histogram_normalized){
         //Define a rectangle that represents the location of the current bin and paint it black
         const cv::Rect binArea(binPixelCounter, histogramHeight - currentHistogram, binPixelWidth, currentHistogram);
         histogramCanvas(binArea).setTo(black);
 
         // Increment counter to place next bin
         binPixelCounter += binPixelWidth;
-    };
-
-    //Draw each bin using the functor
-    std::for_each(histogram_normalized.cbegin(), histogram_normalized.cend(), lambda_drawBins);
+    }
 
     //Prepare the axis numbers
     const size_t yAxisStartPixel = histogramHeight - histogramHeight_padded;
-    addAxis(histogramCanvas, binsStartPixel, yAxisStartPixel, {*m_bins.cbegin(), *(m_bins.cend() - 1)}, {0, maxCount});
+    addAxis(out, binsStartPixel, yAxisStartPixel, {*m_bins.cbegin(), *(m_bins.cend() - 1)}, {0, maxCount});
 
-    return histogramCanvas;
+    return out;
+}
+
+int Histogram::totalHeightPadding() const
+{
+    return (2 * CANVAS_HEIGHT_PADDING) + PADDING_TITLE_HISTOGRAM + PADDING_HISTOGRAM_XAXIS;
 }
 
 
