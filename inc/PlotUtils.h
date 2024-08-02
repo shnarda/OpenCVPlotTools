@@ -35,7 +35,7 @@ static auto vector_comprehension(const It begin,const It end,const Lambda functo
     static_assert(is_iterator<It>::value);
     static_assert(std::is_invocable<Lambda, typename std::iterator_traits<It>::value_type>::value);
 
-    std::vector<typename std::iterator_traits<It>::value_type> out;
+    std::vector<decltype(functor(*begin))> out;
     out.reserve(std::distance(begin, end));
     std::transform(begin, end, std::back_inserter(out), functor);
     return out;
@@ -49,16 +49,16 @@ static auto vector_comprehension(const It begin,const It end,const Lambda functo
     * @param t_count: number of elements of the output vector. If it's not given, the count will be the integer distance between the start and end
     * @return A vector that has the linearly distributed elements from "start" to "end"
     */
-static std::vector<double> linspace(const float start, const float end, const std::optional<size_t> t_count = {})
+static std::vector<double> linspace(const double start, const double end, const std::optional<size_t> t_count = {})
 {
-    const size_t count = (t_count)? *t_count : (std::abs(end - start) + 1);
+    const size_t count = t_count.value_or(static_cast<size_t>(std::abs(end - start) + 1));
 
     //Handle illegal cases
     if(count == 0)
         throw(std::invalid_argument("Range cannot be zero"));
 
-    const float inc = (end - start) / std::max(count - 1, static_cast<size_t>(1));
-    float curValue = start - inc;
+    const double inc = (end - start) / std::max(count - 1, static_cast<size_t>(1));
+    double curValue = start - inc;
     const auto incFloat = [&curValue, inc]() {return curValue += inc;};
 
     std::vector<double> out(count, 0);

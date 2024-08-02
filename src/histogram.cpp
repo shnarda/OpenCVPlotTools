@@ -82,20 +82,20 @@ Histogram::Histogram(const cv::Mat &inArray, const std::optional<int> t_binSize,
             throw(std::invalid_argument("number of bins cannot be zero"));
 
     // At least one of the range parameters isn't nullopt so auto-range will be necessary
-    double minVal, maxVal;
+    double minVal{}, maxVal{};
     if((!t_binStart) || (!t_binEnd)){
         cv::minMaxLoc(inArray, &minVal, &maxVal, NULL, NULL);
     }
 
     // This lambda expression extends the min-max value for padding
-    constexpr float HISTOGRAM_AXES_PADDING_PERCENTAGE = 0.05;
+    constexpr float HISTOGRAM_AXES_PADDING_PERCENTAGE = 0.05f;
     const auto lambda_addLeftPadding = [HISTOGRAM_AXES_PADDING_PERCENTAGE](float value) {return (value > 0)? value * (1 - HISTOGRAM_AXES_PADDING_PERCENTAGE) : value * (1 + HISTOGRAM_AXES_PADDING_PERCENTAGE); };
     const auto lambda_addRightPaddng = [HISTOGRAM_AXES_PADDING_PERCENTAGE](float value) {return (value > 0)? value * (1 + HISTOGRAM_AXES_PADDING_PERCENTAGE) : value * (1 - HISTOGRAM_AXES_PADDING_PERCENTAGE); };
 
     // Determine the ranges
-    const float binStart = (t_binStart)? *t_binStart : lambda_addLeftPadding(minVal);
-    const float binEnd = (t_binEnd)? *t_binEnd : lambda_addRightPaddng(maxVal);
-    const int binSize = (t_binSize)? *t_binSize : binEnd - binStart + 1;
+    const float binStart = static_cast<float>(t_binStart.value_or(lambda_addLeftPadding(minVal)));
+    const float binEnd = static_cast<float>((t_binEnd).value_or(lambda_addRightPaddng(maxVal)));
+    const int binSize = (t_binSize).value_or( binEnd - binStart + 1);
 
     // Apply OpenCV histogram calculation
     cv::Mat hist;
@@ -174,8 +174,8 @@ cv::Mat Histogram::generateHistogramCanvas(const int titleCanvasHeight, const in
 {
     //Create a histogram canvas with proper paddings
     const auto& [canvasWidth, canvasHeight] = m_canvas.size();
-    const uint32_t histogramWidth = canvasWidth - (2 * CANVAS_WIDTH_PADDING) - yAxisTextWidth();
-    const uint32_t histogramHeight = canvasHeight - totalHeightPadding() - titleCanvasHeight - xAxisTextHeight() - xAxisCanvasHeight;
+    const int histogramWidth = canvasWidth - (2 * CANVAS_WIDTH_PADDING) - yAxisTextWidth();
+    const int histogramHeight = canvasHeight - totalHeightPadding() - titleCanvasHeight - xAxisTextHeight() - xAxisCanvasHeight;
     cv::Mat out(histogramHeight + xAxisTextHeight(), histogramWidth + yAxisTextWidth(), CV_8UC3, white);
     cv::Mat histogramCanvas = out(cv::Rect(m_yAxisTextSize.width + LENGTH_AXIS_LINE, 0, histogramWidth, histogramHeight));
 
@@ -185,21 +185,21 @@ cv::Mat Histogram::generateHistogramCanvas(const int titleCanvasHeight, const in
     //Normalize histogram values to fit the histogram canvas
     constexpr double PADDING_MAX_HEIGHT_PERCENTAGE = 0.95;
     const size_t maxCount = *std::max_element(m_histogram.begin(), m_histogram.end());
-    const double histogramHeight_padded = histogramHeight * PADDING_MAX_HEIGHT_PERCENTAGE;
-    const auto lambda_normalizeBinHeight = [maxCount, histogramHeight_padded](const size_t curHistogram) -> size_t { return histogramHeight_padded * curHistogram / maxCount; };
-    const std::vector<size_t> histogram_normalized = PlotUtils::vector_comprehension(m_histogram.cbegin(), m_histogram.cend(), lambda_normalizeBinHeight);
+    const int histogramHeight_padded = histogramHeight * PADDING_MAX_HEIGHT_PERCENTAGE;
+    const auto lambda_normalizeBinHeight = [maxCount, histogramHeight_padded](const size_t curHistogram) -> int { return static_cast<int>(histogramHeight_padded * curHistogram / maxCount); };
+    const std::vector<int> histogram_normalized = PlotUtils::vector_comprehension(m_histogram.cbegin(), m_histogram.cend(), lambda_normalizeBinHeight);
 
     //Determine the range of each bin
-    const size_t binPixelWidth = histogramWidth / m_bins.size();
+    const int binPixelWidth = histogramWidth / m_bins.size();
 
     //This counter keeps track of the current x-Axis position of the histogram.
     //Start point is the half of the remainder of the previous division to center the histogram
-    const uint32_t binsStartPixel = (histogramWidth - (binPixelWidth * m_bins.size())) / 2;
-    size_t binPixelCounter = binsStartPixel;
+    const int binsStartPixel = (histogramWidth - (binPixelWidth * static_cast<int>(m_bins.size()))) / 2;
+    int binPixelCounter = binsStartPixel;
 
     for(const size_t currentHistogram: histogram_normalized){
         //Define a rectangle that represents the location of the current bin and paint it black
-        const cv::Rect binArea(binPixelCounter, histogramHeight - currentHistogram, binPixelWidth, currentHistogram);
+        const cv::Rect binArea(binPixelCounter, histogramHeight - static_cast<int>(currentHistogram), binPixelWidth, static_cast<int>(currentHistogram));
         histogramCanvas(binArea).setTo(black);
 
         // Increment counter to place next bin

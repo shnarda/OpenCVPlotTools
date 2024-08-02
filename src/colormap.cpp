@@ -156,11 +156,11 @@ cv::Mat Colormap::generateColormapCanvas(const int titleCanvasHeight, const int 
     int colormapWidth, colormapHeight;
     if(availableZoomFactor_y >= availableZoomFactor_x){
         colormapHeight = colormapAvailableHeight;
-        colormapWidth = colormapHeight * aspectRatio;
+        colormapWidth = static_cast<int>(colormapHeight * aspectRatio);
     }
     else{
         colormapWidth = colormapAvailableWidth;
-        colormapHeight = colormapWidth / aspectRatio;
+        colormapHeight = static_cast<int>(colormapWidth / aspectRatio);
     }
     cv::Mat colormap_resized;
     cv::resize(m_colormap, colormap_resized, {colormapWidth, colormapHeight}, 0, 0, cv::InterpolationFlags::INTER_NEAREST);
@@ -210,7 +210,7 @@ cv::Mat Colormap::generateColorbar(const int colormapHeight) const
     //Place each colorbar number
     for(auto it_axes=colorbarAxes.cbegin(), it_pos=colorbarPositions.cbegin();it_axes != colorbarAxes.cend(); it_pos++, it_axes++){
         //Draw the axis line
-        const int pos = *it_pos;
+        const int pos = static_cast<int>(*it_pos);
         cv::line(out, cv::Point{COLORBAR_WIDTH, pos}, cv::Point{COLORBAR_WIDTH + LENGTH_AXIS_LINE, pos}, cv::LINE_AA);
 
         //Draw the text

@@ -17,7 +17,7 @@ constexpr int OFFSET_TEXT_LINE = 10;
 
 static cv::Size allocateTextSpace(const float_t fontSize, const std::string_view text)
 {
-    const int paddingSize = 10 * fontSize;
+    const int paddingSize = static_cast<int>(10 * fontSize);
     const auto countSpaces = std::count(text.begin(), text.end(), ' ');
     const uint32_t countLetters = text.length() - countSpaces;
 
@@ -83,12 +83,12 @@ void PlotElementBase::setText(const TextField component, std::string &&text, con
 void PlotElementBase::setPrecision(const AxisType axisType, const uint8_t precision)
 {
     switch (axisType) {
-    case AxisType::XAxis: m_precision_x = precision;
-    case AxisType::YAxis: m_precision_y = precision;
+    case AxisType::XAxis: m_precision_x = precision; break;
+    case AxisType::YAxis: m_precision_y = precision; break;
     }
 }
 
-void PlotElementBase::centerElement(cv::Mat &target, const cv::Size_<size_t> &centerArea, const AlignmentType alignmentType)
+void PlotElementBase::centerElement(cv::Mat &target, const cv::Size &centerArea, const AlignmentType alignmentType)
 {
     //Check for the illegal conditions
     if(target.empty())
@@ -113,7 +113,7 @@ void PlotElementBase::centerElement(cv::Mat &target, const cv::Size_<size_t> &ce
     target = centered;
 }
 
-cv::Mat PlotElementBase::centerElement(const cv::Mat &target, const cv::Size_<size_t> &centerArea, const AlignmentType alignmentType)
+cv::Mat PlotElementBase::centerElement(const cv::Mat &target, const cv::Size &centerArea, const AlignmentType alignmentType)
 {
     //Check for the illegal conditions
     if(target.empty())
@@ -162,7 +162,7 @@ void PlotElementBase::addAxis(cv::Mat &plotElement, const uint32_t startPixel_x,
         xAxisText.copyTo(plotElement(cv::Rect(posX_xAxisText, LINE_END_XAXIS, xAxisText.cols, xAxisText.rows)));
 
         //Update the x-axis position counter
-        xAxisPosCounter += (plotElement.cols - xAxisStart) / static_cast<float>(numberofAxes_x - 1);
+        xAxisPosCounter += static_cast<int>((plotElement.cols - xAxisStart) / static_cast<float>(numberofAxes_x - 1));
     }
 
     //Apply similar precedure for y-axis. y-axis numbers should be reverse ordered
@@ -183,7 +183,7 @@ void PlotElementBase::addAxis(cv::Mat &plotElement, const uint32_t startPixel_x,
         yAxisText.copyTo(plotElement(cv::Rect(0, yStart, yAxisText.cols, yAxisText.rows)));
 
         //Update the position counter
-        yAxisPosCounter += (plotElement.rows - startPixel_y) / (numberofAxes_y - 1);
+        yAxisPosCounter += (plotElement.rows - startPixel_y) / static_cast<int>(numberofAxes_y - 1);
     }
 }
 

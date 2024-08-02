@@ -71,7 +71,7 @@ TEST_F(GaussianMat, MatrixConstructorBinStartTest)
 
     const auto bins = histogramBins.getBins();
     const double minimumBin = *std::min_element(bins.begin(), bins.end());
-    EXPECT_FLOAT_EQ(BIN_START, minimumBin);
+    EXPECT_DOUBLE_EQ(BIN_START, minimumBin);
 }
 
 TEST_F(GaussianMat, MatrixConstructorBinEndTest)

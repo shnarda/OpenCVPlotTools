@@ -73,8 +73,8 @@ protected:
     [[nodiscard]] static cv::Size allocateNumericTextSpace(const float_t fontSize, const double_t number, const uint8_t precision);
 
     enum class AlignmentType{WidthOnly, HeightOnly, WholeShape};
-    static void centerElement(cv::Mat& centerTarget, const cv::Size_<size_t>& centerArea, const AlignmentType alignmentType);
-    [[nodiscard]] static cv::Mat centerElement(const cv::Mat& centerTarget, const cv::Size_<size_t>& centerArea, const AlignmentType alignmentType);
+    static void centerElement(cv::Mat& centerTarget, const cv::Size& centerArea, const AlignmentType alignmentType);
+    [[nodiscard]] static cv::Mat centerElement(const cv::Mat& centerTarget, const cv::Size& centerArea, const AlignmentType alignmentType);
 
     void addAxis(cv::Mat& plotElement, const uint32_t startPixel_x, const uint32_t startPixel_y, const AxisRange range_x, const AxisRange range_y) const;
 
@@ -86,10 +86,10 @@ protected:
     //Compile time constants
     static constexpr int CANVAS_WIDTH_PADDING = 10;
     static constexpr int CANVAS_HEIGHT_PADDING = 10;
-    static constexpr float_t DEFAULT_TITLE_SIZE = 0.8;
-    static constexpr float_t DEFAULT_XAXIS_SIZE = 0.4;
-    static constexpr float_t DEFAULT_YAXIS_SIZE = 0.4;
-    static constexpr float_t DEFAULT_AXIS_NUMBER_SIZE = 0.3;
+    static constexpr float_t DEFAULT_TITLE_SIZE = 0.8f;
+    static constexpr float_t DEFAULT_XAXIS_SIZE = 0.4f;
+    static constexpr float_t DEFAULT_YAXIS_SIZE = 0.4f;
+    static constexpr float_t DEFAULT_AXIS_NUMBER_SIZE = 0.3f;
     static constexpr int LENGTH_AXIS_LINE = 5;
 
     //Common plot element members
