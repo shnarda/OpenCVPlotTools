@@ -3,8 +3,8 @@
 
 //Compile time constants
 constexpr int OFFSET_COLORMAP_COLORBAR = 8;
+constexpr int COLORBAR_HEIGHT = 255;
 constexpr int COLORBAR_WIDTH = 10;
-constexpr int COLORBAR_AXIS_TEXT_WIDTH = 80;
 constexpr int PADDING_TITLE_COLORMAP = 10;
 constexpr int PADDING_COLORMAP_XAXIS = 30;
 constexpr int COLORMAP_BORDER_THICKNESS = 1;
@@ -17,11 +17,12 @@ constexpr int COLORMAP_BORDER_LENGTH = (2 * COLORMAP_BORDER_THICKNESS);
 using namespace PainterConstants;
 
 namespace{
-    cv::Mat getColorbar(const int colorbarHeight, const cv::ColormapTypes colormapType)
+    auto getColorbar(const int colorbarHeight, const cv::ColormapTypes colormapType) -> cv::Mat
     {
         //Generate a colorbar with fixed size
-        cv::Mat colorbar(255, COLORBAR_WIDTH, CV_8U);
-        const auto lambda_generateGradient = [](uint8_t& pixel_value, const int* pos){ pixel_value = 255 - pos[0]; };
+
+        cv::Mat colorbar(COLORBAR_HEIGHT, COLORBAR_WIDTH, CV_8U);
+        const auto lambda_generateGradient = [](uint8_t& pixel_value, const int* pos){ pixel_value = COLORBAR_HEIGHT - pos[0]; };
         colorbar.forEach<uint8_t>(lambda_generateGradient);
 
         //Resize the colorbar and apply the colormap
@@ -33,10 +34,11 @@ namespace{
 
 Colormap::Colormap(const cv::Mat &target, const cv::ColormapTypes colormapType) : m_colormapType(colormapType)
 {
-    cv::normalize(target, m_colormap, 0, 255, cv::NormTypes::NORM_MINMAX);
+    cv::normalize(target, m_colormap, 0, UCHAR_MAX, cv::NormTypes::NORM_MINMAX);
     cv::applyColorMap(m_colormap, m_colormap, colormapType);
 
-    double targetMin, targetMax;
+    double targetMin{};
+    double targetMax{};
     cv::minMaxLoc(target, &targetMin, &targetMax);
     m_colormapRange = {targetMin, targetMax};
 }
@@ -48,7 +50,8 @@ Colormap::Colormap(const cv::Mat& target,
                    const cv::ColormapTypes colormapType): m_colormapType(colormapType)
 {
     //Get the minimum and maximum value in an array
-    double targetMin, targetMax;
+    double targetMin{};
+    double targetMax{};
     cv::minMaxLoc(target, &targetMin, &targetMax);
 
     //Deduce the colormap range and assign it to the member
@@ -57,12 +60,15 @@ Colormap::Colormap(const cv::Mat& target,
     m_colormapRange = {colormap_min, colormap_max};
 
     //Check if the maximum colormap bound is larger
-    if(colormap_min > colormap_max)
+    if(colormap_min > colormap_max){
         throw std::runtime_error("Minimum colormap bound should not be larger than the maximum bound");
+    }
 
     //Check if any elements are in bounds
-    if((targetMin > colormap_max) || (targetMax < colormap_min))
+    if((targetMin > colormap_max) || (targetMax < colormap_min)){
         throw std::runtime_error("At least one element should be inside of the colormap bounds");
+    }
+
 
     //Truncate the pixels that are outside of the lower and upper bounds of the colormap boundaries
     cv::Mat thresholded;
@@ -71,20 +77,21 @@ Colormap::Colormap(const cv::Mat& target,
 
     //Normalize the target to the range of the colormap
     cv::Mat normalized;
-    cv::normalize(thresholded, normalized, 0, 255, cv::NormTypes::NORM_MINMAX, CV_8U);
+    cv::normalize(thresholded, normalized, 0, UCHAR_MAX, cv::NormTypes::NORM_MINMAX, CV_8U);
 
     //Apply the colormap
     cv::applyColorMap(normalized, m_colormap, colormapType);
 }
 
-cv::Mat Colormap::generate()
+auto Colormap::generate() -> cv::Mat
 {
-    if(m_colormap.empty())
+    if(m_colormap.empty()){
         throw std::runtime_error("The colormap target cannot be empty");
+    }
 
     //Generate the title and x-Axis text but don't place it on the canvas yet. Size of these canvases will determine the size of the main canvas
-    cv::Mat xAxisCanvas = generateText(m_xAxisSize, m_xAxisText, m_xAxisColor);
-    cv::Mat titleCanvas = generateText(m_titleSize, m_title, m_titleColor);
+    cv::Mat xAxisCanvas = (m_xAxisText.empty())? cv::Mat() : generateText(m_xAxisSize, m_xAxisText, m_xAxisColor);
+    cv::Mat titleCanvas = (m_title.empty())? cv::Mat() : generateText(m_titleSize, m_title, m_titleColor);
 
     //There is a lower limit on the sizes that a canvas can have
     const cv::Size minimumCanvasSize = calculateMinimumCanvasSize(titleCanvas.size(), xAxisCanvas.size());
@@ -101,10 +108,12 @@ cv::Mat Colormap::generate()
     canvasRowCounter += CANVAS_HEIGHT_PADDING;
 
     //Place the title canvas that has previously been generated
-    centerElement(titleCanvas, cv::Size{canvasSize.width, 0}, AlignmentType::WidthOnly);
-    titleCanvas.copyTo(m_canvas(cv::Rect(0, canvasRowCounter, titleCanvas.cols, titleCanvas.rows)));
+    if (!titleCanvas.empty()) {
+        centerElement(titleCanvas, cv::Size{canvasSize.width, 0}, AlignmentType::WidthOnly);
+        titleCanvas.copyTo(m_canvas(cv::Rect(0, canvasRowCounter, titleCanvas.cols, titleCanvas.rows)));
 
-    canvasRowCounter += titleCanvas.rows + PADDING_TITLE_COLORMAP;
+        canvasRowCounter += titleCanvas.rows + PADDING_TITLE_COLORMAP;
+    }
 
     //Generate the colormap and place it on canvas
     cv::Mat colormapCanvas = generateColormapCanvas(titleCanvas.rows, xAxisCanvas.rows);
@@ -112,22 +121,24 @@ cv::Mat Colormap::generate()
     centerElement(colormapCanvas, cv::Size{canvasSize.width, colormapAllocatedHeight}, AlignmentType::WholeShape);
     colormapCanvas.copyTo(m_canvas(cv::Rect(0, canvasRowCounter, colormapCanvas.cols, colormapCanvas.rows)));
 
-    canvasRowCounter += colormapCanvas.rows + PADDING_COLORMAP_XAXIS;
-
     //Place the x-axis text that previously generated
-    centerElement(xAxisCanvas, cv::Size{canvasSize.width, 0}, AlignmentType::WidthOnly);
-    xAxisCanvas.copyTo(m_canvas(cv::Rect(0, canvasRowCounter, xAxisCanvas.cols, xAxisCanvas.rows)));
+    if (!xAxisCanvas.empty()) {
+        canvasRowCounter += colormapCanvas.rows + PADDING_COLORMAP_XAXIS;
+        centerElement(xAxisCanvas, cv::Size{canvasSize.width, 0}, AlignmentType::WidthOnly);
+        xAxisCanvas.copyTo(m_canvas(cv::Rect(0, canvasRowCounter, xAxisCanvas.cols, xAxisCanvas.rows)));
+    }
 
     //Generate the histogram graph element.
     return m_canvas;
 }
 
-cv::Size Colormap::calculateMinimumCanvasSize(const cv::Size& titleCanvasSize, const cv::Size& xAxisCanvasSize)
-{    
+auto Colormap::calculateMinimumCanvasSize(const cv::Size titleCanvasSize, const cv::Size xAxisCanvasSize) -> cv::Size
+{
     //Determine the space required for axis number texts
-    m_xAxisTextSize = allocateNumericTextSpace(DEFAULT_AXIS_NUMBER_SIZE, 1.25, m_precision_x);
-    m_yAxisTextSize = allocateNumericTextSpace(DEFAULT_AXIS_NUMBER_SIZE, 1.25, m_precision_y);
-    m_colorbarTextSize = allocateNumericTextSpace(DEFAULT_AXIS_NUMBER_SIZE, 1.25, m_colorbarPrecision);
+    constexpr float_t DUMMY_NUMBER = 1.25F;
+    m_xAxisTextSize = allocateNumericTextSpace(DEFAULT_AXIS_NUMBER_SIZE, DUMMY_NUMBER, m_precision_x);
+    m_yAxisTextSize = allocateNumericTextSpace(DEFAULT_AXIS_NUMBER_SIZE, DUMMY_NUMBER, m_precision_y);
+    m_colorbarTextSize = allocateNumericTextSpace(DEFAULT_AXIS_NUMBER_SIZE, DUMMY_NUMBER, m_colorbarPrecision);
 
     const int minimumColormapHeight = m_colormap.rows + COLORMAP_BORDER_LENGTH + m_xAxisTextSize.height;
     const int minimumColormapWidthWithColorbar = m_yAxisTextSize.width + COLORMAP_BORDER_LENGTH + m_colormap.cols + colorbarTotalWidth();
@@ -140,32 +151,14 @@ cv::Size Colormap::calculateMinimumCanvasSize(const cv::Size& titleCanvasSize, c
 }
 
 
-cv::Mat Colormap::generateColormapCanvas(const int titleCanvasHeight, const int xAxisCanvasHeight) const
+auto Colormap::generateColormapCanvas(const int titleCanvasHeight, const int xAxisCanvasHeight) const -> cv::Mat
 {
-    const int canvasWidthWithoutColormap = colorbarTotalWidth() + COLORMAP_BORDER_LENGTH + yAxisTextWidth();
-
-    //Determine the available size for colormap to place
-    const auto& [canvasWidth, canvasHeight] = m_canvas.size();
-    const int colormapAvailableWidth = canvasWidth - (2 * CANVAS_WIDTH_PADDING) - canvasWidthWithoutColormap;
-    const int colormapAvailableHeight = canvasHeight - totalHeightPadding() - titleCanvasHeight - xAxisTextHeight() - xAxisCanvasHeight - COLORMAP_BORDER_LENGTH;
-
-    //Resize the colormap considering the aspect ratio and the available space
-    const float aspectRatio = static_cast<float>(m_colormap.cols) / m_colormap.rows;
-    const float availableZoomFactor_y = static_cast<float>(colormapAvailableWidth) / m_colormap.cols;
-    const float availableZoomFactor_x = static_cast<float>(colormapAvailableHeight) / m_colormap.rows;
-    int colormapWidth, colormapHeight;
-    if(availableZoomFactor_y >= availableZoomFactor_x){
-        colormapHeight = colormapAvailableHeight;
-        colormapWidth = static_cast<int>(colormapHeight * aspectRatio);
-    }
-    else{
-        colormapWidth = colormapAvailableWidth;
-        colormapHeight = static_cast<int>(colormapWidth / aspectRatio);
-    }
-    cv::Mat colormap_resized;
-    cv::resize(m_colormap, colormap_resized, {colormapWidth, colormapHeight}, 0, 0, cv::InterpolationFlags::INTER_NEAREST);
+    //Enlarge the colormap with the space available
+    cv::Mat colormap_resized = resizeColormap(titleCanvasHeight, xAxisCanvasHeight);
 
     //Prepare the output canvas
+    const auto[colormapWidth, colormapHeight] = colormap_resized.size();
+    const int canvasWidthWithoutColormap = colorbarTotalWidth() + COLORMAP_BORDER_LENGTH + yAxisTextWidth();
     cv::Mat out(colormapHeight + COLORMAP_BORDER_LENGTH + xAxisTextHeight(), colormapWidth + canvasWidthWithoutColormap, CV_8UC3, white);
 
     //Draw a border around colormap to indicate the area
@@ -188,12 +181,12 @@ cv::Mat Colormap::generateColormapCanvas(const int titleCanvasHeight, const int 
 
     //Add axis texts. Remove colorbar area to prevent wrong element width estimation
     cv::Mat colorbar_removed = out.colRange(0, out.cols - colorbarTotalWidth());
-    addAxis(colorbar_removed, 0, 0, {0, m_colormap.cols}, {0, m_colormap.rows});
+    addAxis(colorbar_removed, { 0, 0 }, { 0, 0 }, { 0, m_colormap.cols }, { 0, m_colormap.rows });
 
     return out;
 }
 
-cv::Mat Colormap::generateColorbar(const int colormapHeight) const
+auto Colormap::generateColorbar(const int colormapHeight) const -> cv::Mat
 {
     //Prepare the canvas
     cv::Mat out(colormapHeight, colorbarTotalWidth() - OFFSET_COLORMAP_COLORBAR, CV_8UC3, white);
@@ -205,7 +198,7 @@ cv::Mat Colormap::generateColorbar(const int colormapHeight) const
     const int numberofColorbarAxes = std::min(DEFAULT_NUMBER_OF_COLORBAR_AXES, std::max(colorbar.rows / MINIMUM_COLORBAR_AXIS_DISTANCE, 1));
     const auto&[colormapMin, colormapMax] = m_colormapRange;
     const auto colorbarAxes = PlotUtils::linspace(colormapMin, colormapMax, numberofColorbarAxes);
-    const auto colorbarPositions = PlotUtils::linspace(colormapHeight, 0, numberofColorbarAxes);
+    const auto colorbarPositions = PlotUtils::linspace(static_cast<double>(colormapHeight), 0.0, numberofColorbarAxes);
 
     //Place each colorbar number
     for(auto it_axes=colorbarAxes.cbegin(), it_pos=colorbarPositions.cbegin();it_axes != colorbarAxes.cend(); it_pos++, it_axes++){
@@ -223,12 +216,55 @@ cv::Mat Colormap::generateColorbar(const int colormapHeight) const
     return out;
 }
 
-int Colormap::colorbarTotalWidth() const
+auto Colormap::colorbarTotalWidth() const -> int
 {
     return OFFSET_COLORMAP_COLORBAR + COLORBAR_WIDTH + LENGTH_AXIS_LINE + m_colorbarTextSize.width;
 }
 
-int Colormap::totalHeightPadding() const
+auto Colormap::totalHeightPadding() const -> int
 {
-    return (2 * CANVAS_HEIGHT_PADDING) + PADDING_TITLE_COLORMAP + PADDING_COLORMAP_XAXIS;
+    const int padding_title_colormap = (m_title.empty()) ? 0 : PADDING_TITLE_COLORMAP;
+    const int padding_colormap_xAxis = (m_xAxisText.empty()) ? 0 : PADDING_COLORMAP_XAXIS;
+
+    return (2 * CANVAS_HEIGHT_PADDING) + padding_title_colormap + padding_colormap_xAxis;
+}
+
+auto Colormap::resizeColormap(const int titleCanvasHeight, const int xAxisCanvasHeight) const -> cv::Mat
+{
+    const int canvasWidthWithoutColormap = colorbarTotalWidth() + COLORMAP_BORDER_LENGTH + yAxisTextWidth();
+
+    //Determine the available size for colormap to place
+    const auto& [canvasWidth, canvasHeight] = m_canvas.size();
+    const int colormapAvailableWidth = canvasWidth - (2 * CANVAS_WIDTH_PADDING) - canvasWidthWithoutColormap;
+    const int colormapAvailableHeight = canvasHeight - totalHeightPadding() - titleCanvasHeight - xAxisTextHeight() - xAxisCanvasHeight - COLORMAP_BORDER_LENGTH;
+
+    //Resize the colormap considering the aspect ratio and the available space
+
+    const float aspectRatio = static_cast<float>(m_colormap.cols) / static_cast<float>(m_colormap.rows);
+    const float availableZoomFactor_y = static_cast<float>(colormapAvailableWidth) / m_colormap.cols;
+    const float availableZoomFactor_x = static_cast<float>(colormapAvailableHeight) / m_colormap.rows;
+    int colormapWidth{};
+    int colormapHeight{};
+    if(availableZoomFactor_y >= availableZoomFactor_x){
+        colormapHeight = colormapAvailableHeight;
+        colormapWidth = static_cast<int>(colormapHeight * aspectRatio);
+    }
+    else{
+        colormapWidth = colormapAvailableWidth;
+        colormapHeight = static_cast<int>(colormapWidth / aspectRatio);
+    }
+    cv::Mat ret;
+    cv::resize(m_colormap, ret, {colormapWidth, colormapHeight}, 0, 0, cv::InterpolationFlags::INTER_NEAREST);
+    return ret;
+}
+
+
+Colormap Colormap::clone() const
+{
+    //Clone all cv::Mat types and copy everything else
+    Colormap out(*this);
+    out.m_canvas = m_canvas.clone();
+    out.m_colormap = m_colormap.clone();
+
+    return out;
 }

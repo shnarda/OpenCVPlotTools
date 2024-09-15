@@ -13,8 +13,8 @@ public:
     * @param histogram: histogram distribution vector
     * @param bins: bins vector that represents the quantized values that histogram has been counted
     */
-    explicit Histogram(const std::vector<size_t>& histogram, const std::vector<double>& bins);
-    explicit Histogram(std::vector<size_t>&& histogram, std::vector<double>&& bins);
+    explicit Histogram(const std::vector<size_t>& histogram, const std::vector<float>& bins);
+    explicit Histogram(std::vector<size_t>&& histogram, std::vector<float>&& bins);
 
     /**
     * @brief Constructor variant, where the histogram data is given directly by the parameters. Bins are determined automatically with 1:histogram.size()
@@ -29,8 +29,8 @@ public:
     * @param binsStart: first value of the bin range
     * @param binEnd: last value of the bin range. If it's not given, it will take the following value -> binStart + histogram.size()
     */
-    explicit Histogram(const std::vector<size_t>& histogram, const double binStart, const std::optional<double> binEnd);
-    explicit Histogram(std::vector<size_t>&& histogram, const double binStart, const std::optional<double> binEnd);
+    explicit Histogram(const std::vector<size_t>& histogram, const float binStart, const std::optional<float> binEnd);
+    explicit Histogram(std::vector<size_t>&& histogram, const float binStart, const std::optional<float> binEnd);
 
     /**
     * @brief Constructor variant, where the histogram should be calculated inside the class.
@@ -40,13 +40,13 @@ public:
     * @param binStart: first value of the bin range. If it's not given, it will take the minimum value within the array
     * @param binEnd: last value of the bin range. If it's not given, it will take the maximum value within the array
     */
-    explicit Histogram(const cv::Mat &inArray, const std::optional<int> binSize = {}, const std::optional<double> binStart = {}, const std::optional<double> binEnd = {});
+    explicit Histogram(const cv::Mat &inArray, const std::optional<int> binSize = {}, const std::optional<float> binStart = {}, const std::optional<float> binEnd = {});
 
     //Getters
     const std::vector<size_t>& getHistogram() const {return m_histogram;};
-    const std::vector<double>& getBins() const {return m_bins;};
+    const std::vector<float>& getBins() const {return m_bins;};
 
-
+    Histogram clone() const;
 
     /**
     * @brief Generates the histogram canvas by using the parameters that have been given.
@@ -63,7 +63,7 @@ private:
 
 private:
     std::vector<size_t> m_histogram;
-    std::vector<double> m_bins;
+    std::vector<float> m_bins;
 
 };
 
