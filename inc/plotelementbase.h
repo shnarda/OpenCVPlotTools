@@ -3,6 +3,7 @@
 
 #include "opencv2/core/types.hpp"
 #include <cstdint>
+#include <variant>
 #include <opencv2/core/mat.hpp>
 #include "opencv2/imgproc.hpp"
 
@@ -17,7 +18,14 @@ inline const cv::Scalar red{0, 0, 255};
 inline constexpr auto font = cv::HersheyFonts::FONT_HERSHEY_COMPLEX;
 }
 
+class Colormap;
+class Histogram;
+class Subplot;
+class EmptySpace;
+
+using OffsetRange = std::pair<int, int>;
 using AxisRange = std::pair<double, double>;
+using Plottable = std::variant<Colormap, Histogram, Subplot, EmptySpace>;
 
 enum class TextField{Title, XAxis, YAxis};
 enum class AxisType{XAxis, YAxis};
@@ -29,6 +37,7 @@ public:
     cv::Size getCanvasSize() const {return canvasSize;};
     std::string getText(const TextField field) const;
     cv::Mat& canvas() {return m_canvas;};
+    const cv::Mat& canvas() const { return m_canvas; };
 
     /**
     * @brief Sets the size of the generated canvas. If it won't be set, the class attempts to generate
@@ -43,7 +52,7 @@ public:
     * @brief cv::Size variant of the setcanvasSize function
     * @param size: shape of the canvas
     */
-    void setCanvasSize(const cv::Size_<uint16_t> size) {canvasSize = size;};
+    void setCanvasSize(const cv::Size size) {canvasSize = size;};
 
     /**
     * @brief Sets the text field that has been provided from the parameter "component"
@@ -62,6 +71,8 @@ public:
     */
     void setPrecision(const AxisType axisType, const uint8_t precision);
 
+    bool empty() const {return m_canvas.empty();};
+
 protected:
     //The base class should never be constructed induvidually
     PlotElementBase() = default;
@@ -76,7 +87,7 @@ protected:
     static void centerElement(cv::Mat& centerTarget, const cv::Size& centerArea, const AlignmentType alignmentType);
     [[nodiscard]] static cv::Mat centerElement(const cv::Mat& centerTarget, const cv::Size& centerArea, const AlignmentType alignmentType);
 
-    void addAxis(cv::Mat& plotElement, const uint32_t startPixel_x, const uint32_t startPixel_y, const AxisRange range_x, const AxisRange range_y) const;
+    void addAxis(cv::Mat& plotElement, const OffsetRange offset_x, const OffsetRange offset_y, const AxisRange range_x, const AxisRange range_y) const;
 
     //protected getters
     int yAxisTextWidth() const {return m_yAxisTextSize.width + LENGTH_AXIS_LINE;};

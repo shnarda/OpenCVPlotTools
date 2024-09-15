@@ -11,7 +11,7 @@ constexpr uint32_t SPACE_CHAR_WIDTH_START = 30;
 constexpr uint32_t LETTER_WIDTH_START = 20;
 
 //addAxis constant expressions
-constexpr size_t MINIMUM_PIXELS_BETWEEN_AXES = 15;
+constexpr size_t MINIMUM_PIXELS_BETWEEN_AXES = 70;
 constexpr size_t NUMBER_OF_AXES = 6;
 constexpr int OFFSET_TEXT_LINE = 10;
 
@@ -138,18 +138,18 @@ cv::Mat PlotElementBase::centerElement(const cv::Mat &target, const cv::Size &ce
     return centered;
 }
 
-void PlotElementBase::addAxis(cv::Mat &plotElement, const uint32_t startPixel_x, const uint32_t startPixel_y, const AxisRange range_x, const AxisRange range_y) const
+void PlotElementBase::addAxis(cv::Mat &plotElement, const OffsetRange offset_x, const OffsetRange offset_y, const AxisRange range_x, const AxisRange range_y) const
 {
     //Constants that will repeteadly be used
     const int BOTTOM_XAXIS = plotElement.rows - xAxisTextHeight() - 1;
     const int LINE_END_XAXIS = BOTTOM_XAXIS + LENGTH_AXIS_LINE;
 
     //Start with determining the numbers to be placed on the element
-    const size_t numberofAxes_x = std::min(static_cast<size_t>((plotElement.cols - startPixel_x) / MINIMUM_PIXELS_BETWEEN_AXES), NUMBER_OF_AXES);
+    const int numberofAxes_x = std::min((plotElement.cols - offset_x.first - offset_x.second - yAxisTextWidth()) / MINIMUM_PIXELS_BETWEEN_AXES, NUMBER_OF_AXES);
     const std::vector<double> xAxisNumbers(PlotUtils::linspace(range_x.first, range_x.second, numberofAxes_x));
 
     //Place each number for the x-axis
-    const int xAxisStart = startPixel_x + m_yAxisTextSize.width + OFFSET_TEXT_LINE;
+    const int xAxisStart = offset_x.first + yAxisTextWidth();
     int xAxisPosCounter = xAxisStart;
     for(const double currentNumber: xAxisNumbers){
         cv::line(plotElement, {xAxisPosCounter, BOTTOM_XAXIS}, {xAxisPosCounter, LINE_END_XAXIS}, cv::LINE_AA);
@@ -162,15 +162,15 @@ void PlotElementBase::addAxis(cv::Mat &plotElement, const uint32_t startPixel_x,
         xAxisText.copyTo(plotElement(cv::Rect(posX_xAxisText, LINE_END_XAXIS, xAxisText.cols, xAxisText.rows)));
 
         //Update the x-axis position counter
-        xAxisPosCounter += static_cast<int>((plotElement.cols - xAxisStart) / static_cast<float>(numberofAxes_x - 1));
+        xAxisPosCounter += (plotElement.cols - offset_x.first - offset_x.second - yAxisTextWidth()) / (numberofAxes_x - 1);
     }
 
     //Apply similar precedure for y-axis. y-axis numbers should be reverse ordered
-    const size_t numberofAxes_y = std::min(static_cast<size_t>((plotElement.rows - startPixel_y) / MINIMUM_PIXELS_BETWEEN_AXES), NUMBER_OF_AXES);
+    const int numberofAxes_y = std::min((plotElement.rows - offset_y.first - offset_y.second - xAxisTextHeight()) / MINIMUM_PIXELS_BETWEEN_AXES, NUMBER_OF_AXES);
     const std::vector<double> yAxisNumbers(PlotUtils::linspace(range_y.second, range_y.first, numberofAxes_y));
 
     //Place each number for the y-axis.
-    int yAxisPosCounter = startPixel_y;
+    int yAxisPosCounter = offset_y.first;
     for(const double currentNumber: yAxisNumbers){
         cv::line(plotElement, {m_yAxisTextSize.width - 1, yAxisPosCounter}, {m_yAxisTextSize.width - LENGTH_AXIS_LINE - 1, yAxisPosCounter}, cv::LINE_AA);
 
@@ -183,7 +183,7 @@ void PlotElementBase::addAxis(cv::Mat &plotElement, const uint32_t startPixel_x,
         yAxisText.copyTo(plotElement(cv::Rect(0, yStart, yAxisText.cols, yAxisText.rows)));
 
         //Update the position counter
-        yAxisPosCounter += (plotElement.rows - startPixel_y) / static_cast<int>(numberofAxes_y - 1);
+        yAxisPosCounter += (plotElement.rows - offset_y.first - offset_y.second - xAxisTextHeight()) / (numberofAxes_y - 1);
     }
 }
 
@@ -223,5 +223,7 @@ cv::Size PlotElementBase::allocateNumericTextSpace(const float_t fontSize, const
 {
     std::stringstream stream;
     stream << std::fixed << std::setprecision(precision) << std::scientific << number;
-    return generateText(fontSize, stream.str(), blue).size();
+
+    //Add some toleration for the numbers that requires larger space
+    return generateText(fontSize, stream.str(), blue).size() + cv::Size{ 10, 0 };
 }

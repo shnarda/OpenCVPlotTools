@@ -33,11 +33,15 @@ public:
 
     void setColorbarPrecision(const uint8_t precision) {m_colorbarPrecision = precision;};
 
+    Colormap clone() const;
+
 private:
-    cv::Size calculateMinimumCanvasSize(const cv::Size& titleCanvasSize, const cv::Size& xAxisCanvasSize);
+    cv::Size calculateMinimumCanvasSize(const cv::Size titleCanvasSize, const cv::Size xAxisCanvasSize);
 
     cv::Mat generateColormapCanvas(const int titleCanvasHeight, const int xAxisCanvasHeight) const;
     cv::Mat generateColorbar(const int colormapHeight) const;
+
+    cv::Mat resizeColormap(const int titleCanvasHeight, const int xAxisCanvasHeight) const;
 
     int colorbarTotalWidth() const;
     int totalHeightPadding() const;
@@ -52,8 +56,6 @@ private:
     uint8_t m_colorbarPrecision = 1;
 
     cv::Size m_colorbarTextSize{};
-
-
 };
 
 #endif // COLORMAP_H

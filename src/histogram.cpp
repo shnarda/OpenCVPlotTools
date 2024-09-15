@@ -12,94 +12,94 @@ constexpr int PADDING_HISTOGRAM_XAXIS = 10;
 constexpr int MINIMUM_HISTOGRAM_HEIGHT = 200;
 
 
-static inline void fieldNotFoundError(const std::string& text)
+Histogram::Histogram(const std::vector<size_t> &histogram, const std::vector<float> &bins) : m_histogram(histogram), m_bins(bins)
 {
-    throw(std::runtime_error(text + "doesn't exist on histgram element"));
-}
+    if(m_histogram.empty()){
+        throw(std::runtime_error("Histogram cannot be empty"));
+    }
 
-static inline void improperFieldError(const std::string&operation, const std::string& input)
-{
-    throw(std::runtime_error("The operation '" + operation + "' is incompitable with the field '" + input + "'"));
-}
-
-
-Histogram::Histogram(const std::vector<size_t> &histogram, const std::vector<double> &bins) : m_histogram(histogram), m_bins(bins)
-{
-    if(!m_histogram.size())
-        throw(std::runtime_error("Length of the histogram cannot be zero"));
-
-    if(m_histogram.size() != m_bins.size())
+    if(m_histogram.size() != m_bins.size()){
         throw(std::runtime_error("Length mismatch between histogram vector and bin vector"));
+    }
 }
 
-Histogram::Histogram(std::vector<size_t> &&histogram, std::vector<double> &&bins) : m_histogram(std::move(histogram)), m_bins(std::move(bins))
+Histogram::Histogram(std::vector<size_t> &&histogram, std::vector<float> &&bins) : m_histogram(std::move(histogram)), m_bins(std::move(bins))
 {
-    if(!m_histogram.size())
-        throw(std::runtime_error("Length of the histogram cannot be zero"));
+    if(m_histogram.empty()){
+        throw(std::runtime_error("Histogram cannot be empty"));
+    }
 
-    if(m_histogram.size() != m_bins.size())
+    if(m_histogram.size() != m_bins.size()){
         throw(std::runtime_error("Length mismatch between histogram vector and bin vector"));
+    }
 }
 
 Histogram::Histogram(const std::vector<size_t> &histogram) : m_histogram(histogram), m_bins(histogram.size())
 {
-    if(!m_histogram.size())
-        throw(std::runtime_error("Length of the histogram cannot be zero"));
+    if(m_histogram.empty()){
+        throw(std::runtime_error("Histogram cannot be empty"));
+    }
 
     std::iota(m_bins.begin(), m_bins.end(), 1);
 }
 
 Histogram::Histogram(std::vector<size_t> &&histogram) : m_histogram(std::move(histogram)), m_bins(m_histogram.size())
 {
-    if(!m_histogram.size())
-        throw(std::runtime_error("Length of the histogram cannot be zero"));
+    if(m_histogram.empty()){
+        throw(std::runtime_error("Histogram cannot be empty"));
+    }
 
     std::iota(m_bins.begin(), m_bins.end(), 1);
 }
 
-Histogram::Histogram(const std::vector<size_t> &histogram, const double binStart, const std::optional<double> binEnd) : m_histogram(histogram)
+Histogram::Histogram(const std::vector<size_t> &histogram, const float binStart, const std::optional<float> binEnd_) : m_histogram(histogram)
 {
-    if(!m_histogram.size())
-        throw(std::runtime_error("Length of the histogram cannot be zero"));
+    if(m_histogram.empty()){
+        throw(std::runtime_error("Histogram cannot be empty"));
+    }
 
-    const double binEnd_ = (binEnd)? *binEnd : binStart + histogram.size();
-    m_bins = PlotUtils::linspace(binStart, binEnd_, histogram.size());
+    const float binEnd = binEnd_.value_or(binStart + histogram.size());
+    m_bins = PlotUtils::linspace(binStart, binEnd, histogram.size());
 }
 
-Histogram::Histogram(std::vector<size_t> &&histogram, const double binStart, const std::optional<double> binEnd) : m_histogram(std::move(histogram))
+Histogram::Histogram(std::vector<size_t> &&histogram, const float binStart, const std::optional<float> binEnd_) : m_histogram(std::move(histogram))
 {
-    if(!m_histogram.size())
-        throw(std::runtime_error("Length of the histogram cannot be zero"));
+    if(m_histogram.empty()){
+        throw(std::runtime_error("Histogram cannot be empty"));
+    }
 
-    const double binEnd_ = (binEnd)? *binEnd : binStart + m_histogram.size();
-    m_bins = PlotUtils::linspace(binStart, binEnd_, m_histogram.size());
+    const float binEnd = binEnd_.value_or(binStart + m_histogram.size());
+    m_bins = PlotUtils::linspace(binStart, binEnd, m_histogram.size());
 }
 
-Histogram::Histogram(const cv::Mat &inArray, const std::optional<int> t_binSize, const std::optional<double> t_binStart, const std::optional<double> t_binEnd)
+Histogram::Histogram(const cv::Mat &inArray, const std::optional<int> t_binSize, const std::optional<float> t_binStart, const std::optional<float> t_binEnd)
 {
-    if(t_binSize)
-        if(*t_binSize == 0)
+    if(t_binSize){
+        if(*t_binSize == 0){
             throw(std::invalid_argument("number of bins cannot be zero"));
+        }
+    }
 
     // At least one of the range parameters isn't nullopt so auto-range will be necessary
-    double minVal{}, maxVal{};
+    double minVal{};
+    double maxVal{};
     if((!t_binStart) || (!t_binEnd)){
-        cv::minMaxLoc(inArray, &minVal, &maxVal, NULL, NULL);
+        cv::minMaxLoc(inArray, &minVal, &maxVal, nullptr, nullptr);
     }
 
     // This lambda expression extends the min-max value for padding
-    constexpr float HISTOGRAM_AXES_PADDING_PERCENTAGE = 0.05f;
-    const auto lambda_addLeftPadding = [HISTOGRAM_AXES_PADDING_PERCENTAGE](float value) {return (value > 0)? value * (1 - HISTOGRAM_AXES_PADDING_PERCENTAGE) : value * (1 + HISTOGRAM_AXES_PADDING_PERCENTAGE); };
-    const auto lambda_addRightPaddng = [HISTOGRAM_AXES_PADDING_PERCENTAGE](float value) {return (value > 0)? value * (1 + HISTOGRAM_AXES_PADDING_PERCENTAGE) : value * (1 - HISTOGRAM_AXES_PADDING_PERCENTAGE); };
+    constexpr float HISTOGRAM_AXES_PADDING_PERCENTAGE = 0.05F;
+    const auto lambda_addLeftPadding = [=](float value) -> float {return (value > 0)? value * (1 - HISTOGRAM_AXES_PADDING_PERCENTAGE) : value * (1 + HISTOGRAM_AXES_PADDING_PERCENTAGE); };
+    const auto lambda_addRightPaddng = [=](float value) -> float {return (value > 0)? value * (1 + HISTOGRAM_AXES_PADDING_PERCENTAGE) : value * (1 - HISTOGRAM_AXES_PADDING_PERCENTAGE); };
 
     // Determine the ranges
-    const float binStart = static_cast<float>(t_binStart.value_or(lambda_addLeftPadding(minVal)));
-    const float binEnd = static_cast<float>((t_binEnd).value_or(lambda_addRightPaddng(maxVal)));
+    const float binStart = t_binStart.value_or(lambda_addLeftPadding(minVal));
+    const float binEnd = (t_binEnd).value_or(lambda_addRightPaddng(maxVal));
     const int binSize = (t_binSize).value_or( binEnd - binStart + 1);
 
     // Apply OpenCV histogram calculation
     cv::Mat hist;
-    const std::vector ranges{binStart, binEnd};
+    const std::vector ranges = {binStart, binEnd};
     const std::vector bins{binSize};
     std::vector<cv::Mat>vMat{inArray};
     std::vector<int> chs{0};  
@@ -115,8 +115,8 @@ cv::Mat Histogram::generate()
         throw(std::runtime_error("Length of the histogram or bins vector cannot be zero"));
 
     //Generate the title and x-axis text beforehand.
-    cv::Mat titleCanvas = generateText(m_titleSize, m_title, m_titleColor);
-    cv::Mat xAxisCanvas = generateText(m_xAxisSize, m_xAxisText, m_xAxisColor);
+    cv::Mat titleCanvas = (m_title.empty())? cv::Mat() : generateText(m_titleSize, m_title, m_titleColor);
+    cv::Mat xAxisCanvas = (m_xAxisText.empty())? cv::Mat() : generateText(m_xAxisSize, m_xAxisText, m_xAxisColor);
 
     //There is a lower limit on the sizes that a canvas can have
     const auto minimumCanvasSize = calculateMinimumCanvasSize(titleCanvas.size(), xAxisCanvas.size());
@@ -133,10 +133,12 @@ cv::Mat Histogram::generate()
     canvasRowCounter += CANVAS_HEIGHT_PADDING;
 
     //Reshape the previously generated title and place it on the canvas
-    centerElement(titleCanvas, cv::Size{canvasSize.width, 0}, AlignmentType::WidthOnly);
-    titleCanvas.copyTo(m_canvas(cv::Rect(0, canvasRowCounter, titleCanvas.cols, titleCanvas.rows)));
+    if (!titleCanvas.empty()) {
+        centerElement(titleCanvas, cv::Size{canvasSize.width, 0}, AlignmentType::WidthOnly);
+        titleCanvas.copyTo(m_canvas(cv::Rect(0, canvasRowCounter, titleCanvas.cols, titleCanvas.rows)));
 
-    canvasRowCounter += titleCanvas.rows + PADDING_TITLE_HISTOGRAM;
+        canvasRowCounter += titleCanvas.rows + PADDING_TITLE_HISTOGRAM;
+    }
 
     //Generate the histogram and place it on canvas
     cv::Mat histogramCanvas = generateHistogramCanvas(titleCanvas.rows, xAxisCanvas.rows);
@@ -146,8 +148,10 @@ cv::Mat Histogram::generate()
     canvasRowCounter += histogramCanvas.rows + PADDING_HISTOGRAM_XAXIS;
 
     //Place the x-axis text that previously generated
-    centerElement(xAxisCanvas, cv::Size{canvasSize.width, 0}, AlignmentType::WidthOnly);
-    xAxisCanvas.copyTo(m_canvas(cv::Rect(0, canvasRowCounter, xAxisCanvas.cols, xAxisCanvas.rows)));
+    if (!xAxisCanvas.empty()) {
+        centerElement(xAxisCanvas, cv::Size{canvasSize.width, 0}, AlignmentType::WidthOnly);
+        xAxisCanvas.copyTo(m_canvas(cv::Rect(0, canvasRowCounter, xAxisCanvas.cols, xAxisCanvas.rows)));
+    }
 
     //Generate the histogram graph element.
     return m_canvas;
@@ -163,8 +167,9 @@ cv::Size Histogram::calculateMinimumCanvasSize(const cv::Size& titleCanvasSize, 
     const int histogramWidthWithyAxis = minimumHistogramSize.width + m_yAxisTextSize.width;
 
     //Combine minimum sizes
-    const int totalHeight = (2 * CANVAS_HEIGHT_PADDING) + titleCanvasSize.height + PADDING_TITLE_HISTOGRAM + minimumHistogramSize.height +
-                            m_xAxisTextSize.height + PADDING_HISTOGRAM_XAXIS + xAxisCanvasSize.height;
+    const int requiredSize_title = (titleCanvasSize.empty()) ? 0 : titleCanvasSize.height + PADDING_TITLE_HISTOGRAM;
+    const int requiredSize_xAxis = (xAxisCanvasSize.empty()) ? 0 : xAxisCanvasSize.height + PADDING_HISTOGRAM_XAXIS;
+    const int totalHeight = (2 * CANVAS_HEIGHT_PADDING) + requiredSize_title + minimumHistogramSize.height + m_xAxisTextSize.height + requiredSize_xAxis ;
     const int totalWidth = std::max({titleCanvasSize.width, histogramWidthWithyAxis, xAxisCanvasSize.width}) + (2 * CANVAS_WIDTH_PADDING);
 
     return cv::Size{totalWidth, totalHeight};
@@ -177,7 +182,7 @@ cv::Mat Histogram::generateHistogramCanvas(const int titleCanvasHeight, const in
     const int histogramWidth = canvasWidth - (2 * CANVAS_WIDTH_PADDING) - yAxisTextWidth();
     const int histogramHeight = canvasHeight - totalHeightPadding() - titleCanvasHeight - xAxisTextHeight() - xAxisCanvasHeight;
     cv::Mat out(histogramHeight + xAxisTextHeight(), histogramWidth + yAxisTextWidth(), CV_8UC3, white);
-    cv::Mat histogramCanvas = out(cv::Rect(m_yAxisTextSize.width + LENGTH_AXIS_LINE, 0, histogramWidth, histogramHeight));
+    cv::Mat histogramCanvas = out(cv::Rect(yAxisTextWidth(), 0, histogramWidth, histogramHeight));
 
     //Draw a rectangle around histogram to indicate the area
     cv::rectangle(histogramCanvas, cv::Rect(0, 0, histogramCanvas.cols, histogramCanvas.rows), black, 1, cv::LINE_AA);
@@ -194,12 +199,12 @@ cv::Mat Histogram::generateHistogramCanvas(const int titleCanvasHeight, const in
 
     //This counter keeps track of the current x-Axis position of the histogram.
     //Start point is the half of the remainder of the previous division to center the histogram
-    const int binsStartPixel = (histogramWidth - (binPixelWidth * static_cast<int>(m_bins.size()))) / 2;
+    const int binsStartPixel = (histogramWidth - (binPixelWidth * m_bins.size())) / 2;
     int binPixelCounter = binsStartPixel;
 
-    for(const size_t currentHistogram: histogram_normalized){
+    for(const int currentHistogram: histogram_normalized){
         //Define a rectangle that represents the location of the current bin and paint it black
-        const cv::Rect binArea(binPixelCounter, histogramHeight - static_cast<int>(currentHistogram), binPixelWidth, static_cast<int>(currentHistogram));
+        const cv::Rect binArea(binPixelCounter, histogramHeight - currentHistogram, binPixelWidth, currentHistogram);
         histogramCanvas(binArea).setTo(black);
 
         // Increment counter to place next bin
@@ -207,8 +212,8 @@ cv::Mat Histogram::generateHistogramCanvas(const int titleCanvasHeight, const in
     }
 
     //Prepare the axis numbers
-    const size_t yAxisStartPixel = histogramHeight - histogramHeight_padded;
-    addAxis(out, binsStartPixel, yAxisStartPixel, {*m_bins.cbegin(), *(m_bins.cend() - 1)}, {0, maxCount});
+    const int yAxisStartPixel = histogramHeight - histogramHeight_padded;
+    addAxis(out, { binsStartPixel, binsStartPixel }, { yAxisStartPixel, 0 }, { *m_bins.cbegin(), *(m_bins.cend() - 1) }, { 0, maxCount });
 
     return out;
 }
@@ -218,4 +223,11 @@ int Histogram::totalHeightPadding() const
     return (2 * CANVAS_HEIGHT_PADDING) + PADDING_TITLE_HISTOGRAM + PADDING_HISTOGRAM_XAXIS;
 }
 
+Histogram Histogram::clone() const
+{
+    //Clone all cv::Mat types and copy everything else
+    Histogram out(*this);
+    out.m_canvas = m_canvas.clone();
 
+    return out;
+}

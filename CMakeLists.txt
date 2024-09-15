@@ -14,10 +14,24 @@ add_library(OpenCVPlotTools STATIC
     src/histogram.cpp
     src/plotelementbase.cpp
     src/colormap.cpp
+    src/subplot.cpp
 )
 
 target_include_directories(OpenCVPlotTools PRIVATE ${OpenCV_INCLUDE_DIRS} inc)
 target_link_libraries(OpenCVPlotTools PRIVATE ${OpenCV_LIBS})
+
+#add_executable(Example
+#    Examples/Subplot_example.cpp
+#)
+#target_include_directories(Example PRIVATE
+#    ${OpenCV_INCLUDE_DIRS}
+#    inc
+#)
+#target_link_libraries(Example
+#    OpenCVPlotTools
+#    ${OpenCV_LIBS}
+#)
+
 
 ################ Tests #########################
 
