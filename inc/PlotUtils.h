@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <iterator>
 #include <optional>
+#include <stdexcept>
 #include <type_traits>
 #include <vector>
 #endif // PLOTUTILS_H
@@ -49,19 +50,22 @@ static auto vector_comprehension(const It begin,const It end,const Lambda functo
     * @param t_count: number of elements of the output vector. If it's not given, the count will be the integer distance between the start and end
     * @return A vector that has the linearly distributed elements from "start" to "end"
     */
-static std::vector<double> linspace(const double start, const double end, const std::optional<size_t> t_count = {})
+template <typename T>
+static std::vector<T> linspace(const T start, const T end, const std::optional<size_t> t_count = {})
 {
-    const size_t count = t_count.value_or(static_cast<size_t>(std::abs(end - start) + 1));
+    static_assert(std::is_arithmetic_v<T>);
+
+    const size_t count = t_count.value_or(std::abs(end - start) + 1);
 
     //Handle illegal cases
     if(count == 0)
-        throw(std::invalid_argument("Range cannot be zero"));
+        throw(std::runtime_error("Range cannot be zero"));
 
-    const double inc = (end - start) / std::max(count - 1, static_cast<size_t>(1));
+    const double inc = static_cast<double>(end - start) / std::max(count - 1, static_cast<size_t>(1));
     double curValue = start - inc;
     const auto incFloat = [&curValue, inc]() {return curValue += inc;};
 
-    std::vector<double> out(count, 0);
+    std::vector<T> out(count, 0);
     std::generate(out.begin(), out.end() - 1, incFloat);
     *(out.end() - 1) = end;
     return out;
